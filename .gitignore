@@ -73,4 +73,4 @@ Plugins/*/Intermediate/*
 # Cache files for the editor to use
 DerivedDataCache/*
 Plugins/
-ArcGIS-User-Authentication-App/
+# ArcGIS-User-Authentication-App/
