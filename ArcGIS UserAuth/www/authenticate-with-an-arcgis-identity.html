@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no" />
+  <title>ArcGIS Maps SDK Login</title>
+
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.30/esri/themes/light/main.css">
+  <script src="https://js.arcgis.com/4.30/"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
+  <style>
+    html,
+    body {
+      font-size: 150%;
+      margin: 10vh 10vw;
+    }
+  </style>
+
+  <script>
+
+    require([
+      "esri/portal/Portal",
+      "esri/identity/OAuthInfo",
+      "esri/identity/IdentityManager"
+    ], function (Portal, OAuthInfo, esriId) {
+
+      const info = new OAuthInfo({
+        appId: "raIlJpkSMoStBPOs",
+        popup: false // the default 
+      });
+      esriId.registerOAuthInfos([info]);
+
+      esriId
+        .checkSignInStatus(info.portalUrl + "/sharing")
+        .then(() => {
+          handleSignedIn();
+        }).then(() => {
+          document.getElementById('copyClipboard').style.display = 'block';
+        }).catch(() => {
+          handleSignedOut();
+
+        });
+
+      document.getElementById("sign-in").addEventListener("click", function () {
+        esriId.getCredential(info.portalUrl + "/sharing");
+      });
+
+      document.getElementById("sign-out").addEventListener("click", function () {
+        esriId.destroyCredentials();
+        window.location.reload();
+      });
+
+      document.getElementById('copyClipboard').addEventListener('click', () => {
+        let resultText = JSON.parse(document.getElementById("results").innerText);
+        let access_token = resultText["Access Token"];
+        navigator.clipboard.writeText(access_token);
+
+        document.getElementById('copyClipboard').innerHTML = 'Copied to clipboard!'
+        setTimeout(() => {
+          document.getElementById('copyClipboard').innerHTML = 'Copy Access Token';
+        }, 1000);
+
+        // console.log(access_token);
+      });
+
+      function handleSignedIn() {
+
+        const portal = new Portal();
+        portal.load().then(() => {
+
+          $.ajax({
+                type: 'POST',
+                data: {refreshToken: portal.credential._oAuthCred.refreshToken},
+                dataType: 'application/json',
+                url: 'http://localhost:8000',
+                error: res => {
+                  response = JSON.parse(res.responseText);
+                  access_token = response["Access Token"];
+                  
+
+                  var timeRegex = /T(.*?)\./;
+                  var time = new Date();
+                  var currentTime = time.toISOString().match(timeRegex)[1];
+                  var expTime = new Date();
+                  expTime.setMinutes(time.getMinutes() + 30);
+                  var expirationTime = expTime.toISOString().match(timeRegex)[1];
+
+                  const results = {
+                    Name: portal.user.fullName,
+                    Username: portal.user.username,
+                    "Access Token": access_token,
+                    "Access Token created at": currentTime,
+                    "Access Token expires at": expirationTime
+                  };
+                  document.getElementById("results").innerText = JSON.stringify(results, null, 2);
+
+                }
+          }) // end ajax.POST
+        });
+
+      }
+
+      function handleSignedOut() {
+        document.getElementById("results").innerText = 'Signed Out'
+      }
+
+    });
+  </script>
+
+</head>
+
+<body>
+
+  <h1>Log in to ArcGIS</h1>
+  <button id="sign-in" class="btn btn-primary">Sign In</button>
+  <button id="sign-out" class="btn btn-primary">Sign Out</button>
+  </br>
+  <button id="copyClipboard" style="display: none;">Copy Access Token</button>
+  <pre><code id="status"></code></pre>
+  <pre><code id="results"></code></pre>
+
+</body>
+
+</html>
+
